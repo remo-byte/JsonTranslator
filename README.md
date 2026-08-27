@@ -125,18 +125,31 @@
 
 ---
 
-## 🏗️ Building & Packaging
+### 📥 Download Pre-Built Binaries
+Ready-to-use binaries for Windows and Linux are automatically built and published on the [GitHub Releases](https://github.com/remo-byte/JsonTranslator/releases) page:
+- 🪟 **Windows**: `JsonTranslator-win-portable.exe` (No installation needed)
+- 🐧 **Linux**: `JsonTranslator-linux-x64.AppImage` (Executable on all major Linux distributions)
 
-To compile TypeScript, build the web assets with Vite, and bundle native desktop executables via `electron-builder`:
+---
+
+## 🏗️ Building & Packaging Locally
+
+To compile TypeScript, build the web assets with Vite, and package native desktop binaries via `electron-builder`:
 
 ```bash
-# Build for current OS
+# Build for current Operating System
 npm run electron:build
+
+# Or build specifically for Windows (Portable .exe)
+npm run build:win
+
+# Or build specifically for Linux (AppImage)
+npm run build:linux
 ```
 
-### Supported Outputs:
-- **Windows**: Portable executable (`release/JsonTranslator-win-portable.exe`)
-- **Linux**: AppImage bundle (`release/JsonTranslator-*.AppImage`)
+### Generated Artifacts (`release/` folder):
+- **Windows**: `release/JsonTranslator-win-portable.exe`
+- **Linux**: `release/JsonTranslator-linux-x64.AppImage`
 
 ---
 

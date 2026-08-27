@@ -21,6 +21,8 @@
     "electron:compile": "tsc --project tsconfig.electron.json",
     "electron:dev": "npm run electron:compile && concurrently -k --success first \"vite\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron dist-electron/main.js\"",
     "electron:build": "npm run build && npm run electron:compile && electron-builder",
+    "build:win": "npm run build && npm run electron:compile && electron-builder --win",
+    "build:linux": "npm run build && npm run electron:compile && electron-builder --linux",
     "preview": "vite preview"
   },
   "devDependencies": {
@@ -63,7 +65,8 @@
         }
       ],
       "icon": "assets/icon.png",
-      "category": "Utility"
+      "category": "Utility",
+      "artifactName": "JsonTranslator-linux-x64.AppImage"
     },
     "portable": {
       "artifactName": "JsonTranslator-win-portable.exe"
