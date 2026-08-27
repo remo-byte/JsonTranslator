@@ -1,0 +1,76 @@
+{
+  "name": "json-translator",
+  "version": "1.0.0",
+  "description": "High-performance JSON translation workbench and QA editor desktop application",
+  "license": "MIT",
+  "keywords": [
+    "json",
+    "translator",
+    "localization",
+    "i18n",
+    "electron",
+    "deepl",
+    "google-translate",
+    "glossary",
+    "diff-merge"
+  ],
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --project tsconfig.renderer.json && vite build",
+    "electron:compile": "tsc --project tsconfig.electron.json",
+    "electron:dev": "npm run electron:compile && concurrently -k --success first \"vite\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron dist-electron/main.js\"",
+    "electron:build": "npm run build && npm run electron:compile && electron-builder",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3",
+    "typescript": "^5.4.5",
+    "vite": "^5.3.1",
+    "wait-on": "^9.1.0"
+  },
+  "build": {
+    "appId": "com.jsontranslator.app",
+    "productName": "JsonTranslator",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.png",
+      "category": "Utility"
+    },
+    "portable": {
+      "artifactName": "JsonTranslator-win-portable.exe"
+    }
+  },
+  "allowScripts": {
+    "electron@31.7.7": true,
+    "esbuild@0.21.5": true
+  }
+}

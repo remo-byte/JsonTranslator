@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JSON Translator</title>
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; connect-src 'self' https://translate.googleapis.com https://translation.googleapis.com https://api-free.deepl.com https://api.deepl.com https:;" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- ═══ TOOLBAR ═══ -->
+  <div id="toolbar">
+    <button class="btn primary" id="btn-open"
+      data-i18n="openFile">Open File</button>
+    <div class="toolbar-sep"></div>
+    <button class="btn" id="btn-save" title="Ctrl+S"
+      data-i18n="save">Save</button>
+    <button class="btn" id="btn-save-as" title="Ctrl+Shift+S"
+      data-i18n="saveAs">Save As</button>
+    <div class="toolbar-sep"></div>
+    <div id="progress-wrap">
+      <div id="progress-track"><div id="progress-bar-fill"></div></div>
+      <span id="progress-text">—</span>
+    </div>
+    <span id="status-msg"></span>
+    <button class="btn" id="btn-find-replace" title="Ctrl+H"
+      data-i18n="findReplace">🔍 Replace</button>
+    <button class="btn" id="btn-merge"
+      data-i18n="mergeUpdate">🔀 Merge Update</button>
+    <button class="btn" id="btn-batch-translate"
+      data-i18n="batchTranslate">⚡ Bulk Translate</button>
+    <button class="btn" id="btn-stats"
+      data-i18n="stats">📊 Statistics</button>
+    <div class="toolbar-sep"></div>
+    <button class="btn" id="btn-dictionary"
+      data-i18n="dictionary">📖 Dictionary</button>
+    <button class="btn" id="btn-settings"
+      data-i18n="settings">Settings</button>
+  </div>
+
+
+
+
+
+  <!-- ═══ DROPZONE (Welcome Screen - managed by WelcomeScreen.ts) ═══ -->
+  <div id="dropzone"></div>
+
+  <!-- ═══ EDITOR SECTION ═══ -->
+  <div id="editor-section">
+
+    <!-- ── LEFT SIDEBAR ── -->
+    <div id="sidebar">
+      <div id="sidebar-toolbar">
+        <div id="filter-bar">
+          <button data-filter="all" class="active"
+            data-i18n="filterAll">All</button>
+          <button data-filter="untranslated"
+            data-i18n="filterUntranslated">Untranslated</button>
+          <button data-filter="translated"
+            data-i18n="filterTranslated">Translated</button>
+        </div>
+        <div id="issues-bar">
+          <button data-filter="errors" class="btn-issue btn-error" id="btn-filter-errors">
+            <span data-i18n="filterErrors">❌ Errors</span>
+            <span class="issue-badge badge-errors" id="badge-error-count">0</span>
+          </button>
+          <button data-filter="warnings" class="btn-issue btn-warning" id="btn-filter-warnings">
+            <span data-i18n="filterWarnings">⚠️ Warnings</span>
+            <span class="issue-badge badge-warnings" id="badge-warning-count">0</span>
+          </button>
+        </div>
+
+        <input
+          id="search-input"
+          type="search"
+          data-i18n="searchPlaceholder"
+          data-i18n-attr="placeholder"
+          placeholder="Search…"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+      <div id="entry-list"></div>
+      <div id="sidebar-pagination" class="sidebar-pagination"></div>
+    </div>
+
+    <!-- ── VERTICAL SPLITTER (Sidebar Resizer) ── -->
+    <div id="sidebar-resizer" class="resizer-col" title="Genişliği ayarla"></div>
+
+    <!-- ── RIGHT DETAIL PANE ── -->
+    <div id="detail-pane">
+
+      <div id="detail-empty">
+        <span data-i18n="selectEntry">← Select an entry from the left</span>
+        <span style="font-size:10.5px;" data-i18n="selectEntryHint">or switch to Untranslated filter</span>
+      </div>
+
+      <div id="detail-header">
+        <span id="detail-key-label"></span>
+        <div id="detail-nav">
+          <button class="btn" id="btn-prev"
+            data-i18n="prevEntry"
+            data-i18n-title="prevTitle"
+            title="Previous (Alt+↑)">↑ Prev</button>
+          <button class="btn" id="btn-next"
+            data-i18n="nextEntry"
+            data-i18n-title="nextTitle"
+            title="Next (Alt+↓)">↓ Next</button>
+        </div>
+      </div>
+
+      <!-- Upper Panel: SOURCE -->
+      <div id="source-panel">
+        <div id="source-panel-label"
+          data-i18n="sourcePanelLabel">SOURCE — English</div>
+        <div id="source-content"></div>
+      </div>
+
+      <!-- ── HORIZONTAL SPLITTER (Source/Target Resizer) ── -->
+      <div id="detail-resizer" class="resizer-row" title="Yüksekliği ayarla"></div>
+
+      <!-- Lower Panel: TARGET -->
+      <div id="target-panel">
+        <div id="target-panel-label">
+          <div class="target-label-left">
+            <span data-i18n="targetPanelLabel">TRANSLATION</span>
+            <span id="validation-msg" class="val-ok"></span>
+          </div>
+          <div class="target-label-right">
+            <button id="btn-auto-translate" class="btn-translate" title="Otomatik Çevir (Ctrl+T)">
+              <span class="translate-icon">✨</span>
+              <span id="btn-translate-text" data-i18n="autoTranslate">Translate</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Glossary Suggestions Bar -->
+        <div id="glossary-bar" class="glossary-bar">
+          <span class="glossary-label" data-i18n="glossaryMatches">Glossary:</span>
+          <div id="glossary-chips" class="glossary-chips"></div>
+        </div>
+
+        <textarea
+          id="target-textarea"
+          data-i18n="targetPlaceholder"
+          data-i18n-attr="placeholder"
+          placeholder="Type translation here…"
+          spellcheck="false"
+        ></textarea>
+        <div id="shortcut-hint">
+          <span><kbd>Ctrl+Enter</kbd> <span data-i18n="shortcutSaveNext">save &amp; next</span></span>
+          <span><kbd>Ctrl+T</kbd> <span data-i18n="autoTranslate">translate</span></span>
+          <span><kbd>Alt+↑↓</kbd> <span data-i18n="shortcutNav">prev / next</span></span>
+          <span><kbd>Chip</kbd> <span data-i18n="shortcutChip">→ insert here</span></span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── RIGHT RESIZER (Dictionary Resizer) ── -->
+    <div id="dict-resizer" class="resizer-col dict-resizer" title="Sözlük genişliğini ayarla" style="display:none;"></div>
+
+    <!-- ── RIGHT SIDEBAR: DICTIONARY / GLOSSARY ── -->
+    <div id="dict-sidebar" class="dict-sidebar">
+      <div id="dict-sidebar-header" class="dict-sidebar-header">
+        <div class="dict-header-left">
+          <span class="dict-sidebar-icon">📖</span>
+          <h3 id="dict-sidebar-title">Glossary</h3>
+        </div>
+        <div class="dict-header-right">
+          <input type="file" id="dict-import-file" accept=".json,.csv,.tsv,.txt" style="display:none;" />
+          <button class="btn-icon" id="btn-dict-import" title="Import JSON / CSV / TSV">📥</button>
+          <button class="btn-icon" id="btn-dict-export" title="Export JSON">📤 JSON</button>
+          <button class="btn-icon" id="btn-dict-export-csv" title="Export CSV (Excel)">📊 CSV</button>
+          <button class="btn-icon" id="btn-dict-sidebar-close" title="Close">×</button>
+        </div>
+
+      </div>
+
+      <!-- Add term form -->
+      <form id="dict-add-form" class="dict-add-form">
+        <input type="text" id="dict-src-input" placeholder="Source Term" required autocomplete="off" />
+        <input type="text" id="dict-tgt-input" placeholder="Translation" required autocomplete="off" />
+        <input type="text" id="dict-note-input" placeholder="Note (optional)" autocomplete="off" />
+        <button type="submit" class="btn primary" id="btn-dict-add">+ Add</button>
+      </form>
+
+      <!-- Search terms -->
+      <div class="dict-search-wrap">
+        <input type="search" id="dict-search-input" placeholder="Search terms…" autocomplete="off" />
+        <span id="dict-terms-count" class="dict-count-badge">0 terms</span>
+      </div>
+
+      <!-- Terms list -->
+      <div id="dict-terms-list" class="dict-terms-list"></div>
+    </div>
+
+  </div>
+
+
+  <!-- ═══ SETTINGS MODAL ═══ -->
+  <div id="settings-overlay">
+    <div id="settings-dialog" role="dialog" aria-modal="true">
+
+      <div id="settings-header">
+        <h2 id="settings-title">Settings</h2>
+        <button id="btn-settings-close" title="Close">×</button>
+      </div>
+
+      <div id="settings-body">
+        <div class="setting-row">
+          <span class="setting-label" id="settings-lang-label" data-i18n="settingsLang">Interface Language</span>
+          <div id="lang-select-container"></div>
+        </div>
+
+        <div class="setting-divider"></div>
+        <div class="setting-section-title" id="settings-mt-title" data-i18n="mtSectionTitle">Machine Translation (Google / DeepL)</div>
+
+        <div class="setting-row">
+          <span class="setting-label" id="settings-mt-provider-label" data-i18n="mtProvider">Provider</span>
+          <select id="mt-provider-select" class="lang-select">
+            <option value="google">Google Translate</option>
+            <option value="deepl">DeepL</option>
+          </select>
+        </div>
+
+        <div class="setting-row">
+          <span class="setting-label" id="settings-mt-lang-label" data-i18n="mtTargetLang">Target Language</span>
+          <select id="mt-lang-select" class="lang-select">
+            <option value="tr">Türkçe (TR)</option>
+            <option value="en">English (EN)</option>
+            <option value="de">Deutsch (DE)</option>
+            <option value="fr">Français (FR)</option>
+            <option value="es">Español (ES)</option>
+            <option value="it">Italiano (IT)</option>
+            <option value="ru">Русский (RU)</option>
+            <option value="ja">日本語 (JA)</option>
+            <option value="ko">한국어 (KO)</option>
+            <option value="zh">中文 (ZH)</option>
+          </select>
+        </div>
+
+        <div class="setting-row" id="mt-deepl-row">
+          <span class="setting-label" id="settings-mt-deepl-label" data-i18n="mtDeeplKey">DeepL API Key</span>
+          <input type="password" id="mt-deepl-key" class="setting-input" placeholder="e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx:fx" autocomplete="off" />
+        </div>
+
+        <div class="setting-row" id="mt-google-row">
+          <span class="setting-label" id="settings-mt-google-label" data-i18n="mtGoogleKey">Google Cloud API Key</span>
+          <input type="password" id="mt-google-key" class="setting-input" placeholder="Optional (Free endpoint used if empty)" autocomplete="off" />
+        </div>
+      </div>
+
+
+      <div id="settings-footer">
+        <button class="btn" id="btn-settings-close-footer"
+          data-i18n="settingsClose">Close</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══ MERGE MODAL ═══ -->
+  <div id="merge-overlay">
+    <div id="merge-dialog">
+      <div id="merge-header">
+        <div class="merge-title-wrap">
+          <div class="merge-icon-title">
+            <span class="merge-icon">🔀</span>
+            <h2 id="merge-title" data-i18n="mergeTitle">Update Synchronization (Diff & Merge)</h2>
+          </div>
+          <p id="merge-subtitle" data-i18n="mergeSubtitle">Analyze and merge new version JSON file with your current translations.</p>
+        </div>
+        <button id="btn-merge-close">&times;</button>
+      </div>
+
+      <div id="merge-body">
+        <!-- Stats cards -->
+        <div class="merge-stats-grid">
+          <div class="merge-stat-card stat-exact">
+            <div class="stat-num" id="stat-exact-val">0</div>
+            <div class="stat-label" id="stat-exact-lbl" data-i18n="mergeStatExact">Preserved</div>
+          </div>
+          <div class="merge-stat-card stat-renamed">
+            <div class="stat-num" id="stat-renamed-val">0</div>
+            <div class="stat-label" id="stat-renamed-lbl" data-i18n="mergeStatRenamed">Renamed Keys</div>
+          </div>
+          <div class="merge-stat-card stat-fuzzy">
+            <div class="stat-num" id="stat-fuzzy-val">0</div>
+            <div class="stat-label" id="stat-fuzzy-lbl" data-i18n="mergeStatFuzzy">Fuzzy Matches</div>
+          </div>
+          <div class="merge-stat-card stat-new">
+            <div class="stat-num" id="stat-new-val">0</div>
+            <div class="stat-label" id="stat-new-lbl" data-i18n="mergeStatNew">Brand New</div>
+          </div>
+          <div class="merge-stat-card stat-removed">
+            <div class="stat-num" id="stat-removed-val">0</div>
+            <div class="stat-label" id="stat-removed-lbl" data-i18n="mergeStatRemoved">Removed</div>
+          </div>
+        </div>
+
+        <!-- Filter tabs -->
+        <div class="merge-tabs">
+          <button class="merge-tab active" id="merge-tab-changed" data-i18n="mergeFilterChanged">Changed & New Only</button>
+          <button class="merge-tab" id="merge-tab-all" data-i18n="mergeFilterAll">All Keys</button>
+        </div>
+
+        <!-- Diff List -->
+        <div id="merge-diff-list" class="merge-diff-list"></div>
+      </div>
+
+      <div id="merge-footer">
+        <button class="btn" id="btn-merge-cancel" data-i18n="mergeCancel">Cancel</button>
+        <button class="btn primary" id="btn-merge-confirm" data-i18n="mergeApply">Apply Merge</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ STATS MODAL ═══ -->
+  <div id="stats-overlay">
+    <div id="stats-dialog">
+      <div id="stats-header">
+        <div class="stats-title-wrap">
+          <div class="stats-icon-title">
+            <span class="stats-icon">📊</span>
+            <h2 id="stats-title" data-i18n="statsTitle">Project Statistics & Analytics</h2>
+          </div>
+          <p id="stats-subtitle" data-i18n="statsSubtitle">Detailed breakdown of words, characters, progress and estimated time.</p>
+        </div>
+        <button id="btn-stats-close">&times;</button>
+      </div>
+
+      <div id="stats-body">
+        <!-- Progress banner -->
+        <div class="stats-progress-card">
+          <div class="stats-prog-header">
+            <span class="stats-prog-title" data-i18n="filterTranslated">Completion Rate</span>
+            <span class="stats-prog-pct" id="stats-progress-percent">%0</span>
+          </div>
+          <div class="stats-prog-bar-track">
+            <div class="stats-prog-bar-fill" id="stats-progress-bar-fill"></div>
+          </div>
+          <div class="stats-prog-sub" id="stats-progress-counts">0 / 0 entries</div>
+        </div>
+
+        <!-- 2 Columns Metric Grid -->
+        <div class="stats-metric-grid">
+          <!-- Card 1: Words -->
+          <div class="stats-card">
+            <div class="stats-card-title">📝 Words</div>
+            <div class="stats-card-row">
+              <span class="sc-label" id="lbl-stats-src-words" data-i18n="statsSourceWords">Total Source Words</span>
+              <span class="sc-val" id="stats-val-src-words">0</span>
+            </div>
+            <div class="stats-card-row">
+              <span class="sc-label" id="lbl-stats-rem-words" data-i18n="statsRemainingWords">Remaining Words</span>
+              <span class="sc-val highlight-amber" id="stats-val-rem-words">0</span>
+            </div>
+            <div class="stats-card-row">
+              <span class="sc-label" id="lbl-stats-tgt-words" data-i18n="statsTargetWords">Target Words</span>
+              <span class="sc-val highlight-green" id="stats-val-tgt-words">0</span>
+            </div>
+          </div>
+
+          <!-- Card 2: Characters -->
+          <div class="stats-card">
+            <div class="stats-card-title">🔤 Characters</div>
+            <div class="stats-card-row">
+              <span class="sc-label" id="lbl-stats-src-chars" data-i18n="statsSourceChars">Characters (with spaces)</span>
+              <span class="sc-val" id="stats-val-src-chars">0</span>
+            </div>
+            <div class="stats-card-row">
+              <span class="sc-label" id="lbl-stats-src-chars-nospace" data-i18n="statsCharsNoSpace">Characters (no spaces)</span>
+              <span class="sc-val" id="stats-val-src-chars-nospace">0</span>
+            </div>
+            <div class="stats-card-row">
+              <span class="sc-label" id="lbl-stats-tgt-chars" data-i18n="statsTargetChars">Target Characters</span>
+              <span class="sc-val highlight-green" id="stats-val-tgt-chars">0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="stats-footer">
+        <button class="btn" id="btn-stats-close-footer" data-i18n="settingsClose">Close</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══ BATCH TRANSLATE MODAL ═══ -->
+  <div id="batch-overlay">
+    <div id="batch-dialog">
+      <div id="batch-header">
+        <div class="batch-title-wrap">
+          <div class="batch-icon-title">
+            <span class="batch-icon">⚡</span>
+            <h2 id="batch-title" data-i18n="batchTitle">Bulk Machine Translation</h2>
+          </div>
+          <p id="batch-subtitle" data-i18n="batchSubtitle">Translate multiple untranslated entries automatically using Google or DeepL.</p>
+        </div>
+        <button id="btn-batch-close">&times;</button>
+      </div>
+
+      <div id="batch-body">
+        <!-- 1. Config View -->
+        <div id="batch-view-config">
+          <div class="batch-form-group">
+            <span class="batch-group-title" id="lbl-batch-scope" data-i18n="batchScope">Translation Scope</span>
+            <div class="batch-radio-group">
+              <label class="batch-radio-label">
+                <input type="radio" name="batch-scope" value="untranslated" checked />
+                <span class="radio-custom"></span>
+                <span class="radio-text" id="lbl-scope-untranslated" data-i18n="batchScopeUntranslated">All Untranslated Entries</span>
+              </label>
+              <label class="batch-radio-label">
+                <input type="radio" name="batch-scope" value="page" />
+                <span class="radio-custom"></span>
+                <span class="radio-text" id="lbl-scope-page" data-i18n="batchScopePage">Current Page (Active 50 Entries)</span>
+              </label>
+              <label class="batch-radio-label">
+                <input type="radio" name="batch-scope" value="all" />
+                <span class="radio-custom"></span>
+                <span class="radio-text" id="lbl-scope-all" data-i18n="batchScopeAll">All Entries (Full Project)</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="batch-count-banner">
+            <span id="lbl-batch-total-prompt" data-i18n="batchTotalPrompt">Total Entries to Translate:</span>
+            <strong id="batch-target-count">0 entries</strong>
+          </div>
+
+          <div class="batch-checkbox-row">
+            <label class="batch-check-label">
+              <input type="checkbox" id="batch-overwrite" />
+              <span class="check-custom"></span>
+              <span id="lbl-batch-overwrite" data-i18n="batchOverwrite">Overwrite already translated entries</span>
+            </label>
+          </div>
+
+          <div class="batch-actions-footer">
+            <button class="btn" id="btn-batch-cancel-cfg" data-i18n="mergeCancel">Cancel</button>
+            <button class="btn primary" id="btn-batch-start" data-i18n="batchStart">🚀 Start Translation</button>
+          </div>
+        </div>
+
+        <!-- 2. Progress View -->
+        <div id="batch-view-progress" style="display: none;">
+          <div class="batch-progress-box">
+            <div class="batch-prog-info">
+              <span class="batch-pct" id="batch-pct-val">%0</span>
+              <span class="batch-cnt" id="batch-count-val">0 / 0</span>
+            </div>
+            <div class="batch-bar-track">
+              <div class="batch-bar-fill" id="batch-progress-fill"></div>
+            </div>
+            <div class="batch-current-preview">
+              <span class="cur-label" id="lbl-batch-active" data-i18n="batchActive">Active:</span>
+              <span class="cur-text" id="batch-current-text">—</span>
+            </div>
+          </div>
+
+          <div class="batch-log-header" id="lbl-batch-stream-log" data-i18n="batchStreamLog">Live Translation Stream</div>
+          <div id="batch-live-log" class="batch-live-log"></div>
+
+          <div class="batch-running-footer">
+            <button class="btn" id="btn-batch-pause" data-i18n="batchPause">⏸️ Pause</button>
+            <button class="btn" id="btn-batch-stop" data-i18n="batchStop">⏹️ Stop</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ FIND & REPLACE MODAL (Ctrl+H) ═══ -->
+
+  <div id="find-replace-overlay">
+    <div id="find-replace-dialog">
+      <div id="find-header">
+        <div>
+          <h2 id="find-title" data-i18n="findTitle">🔍 Find & Replace</h2>
+          <p id="find-subtitle" data-i18n="findSubtitle">Search and replace across all target translations in the project.</p>
+        </div>
+        <button id="btn-find-close">&times;</button>
+      </div>
+
+      <div id="find-body">
+        <!-- Input Row 1: Find -->
+        <div class="find-field-row">
+          <label id="lbl-find-query" class="find-label" data-i18n="findLabel">Find Text:</label>
+          <input type="text" id="find-query-input" class="find-input" data-i18n="findPlaceholder" data-i18n-attr="placeholder" placeholder="Enter text to find…" />
+        </div>
+
+        <!-- Input Row 2: Replace -->
+        <div class="find-field-row">
+          <label id="lbl-replace-query" class="find-label" data-i18n="replaceLabel">Replace With:</label>
+          <input type="text" id="replace-query-input" class="find-input" data-i18n="replacePlaceholder" data-i18n-attr="placeholder" placeholder="Enter replacement text…" />
+        </div>
+
+        <!-- Options Row -->
+        <div class="find-options-bar">
+          <label class="find-check-label">
+            <input type="checkbox" id="find-opt-case" />
+            <span class="check-custom"></span>
+            <span id="lbl-opt-case" data-i18n="findMatchCase">Match Case (Aa)</span>
+          </label>
+          <label class="find-check-label">
+            <input type="checkbox" id="find-opt-word" />
+            <span class="check-custom"></span>
+            <span id="lbl-opt-word" data-i18n="findWholeWord">Whole Word (\b)</span>
+          </label>
+          <label class="find-check-label">
+            <input type="checkbox" id="find-opt-regex" />
+            <span class="check-custom"></span>
+            <span id="lbl-opt-regex" data-i18n="findRegex">Regular Expression (RegEx)</span>
+          </label>
+        </div>
+
+        <!-- Status / Counter -->
+        <div class="find-status-bar">
+          <span id="find-status-text">Type a query to search</span>
+        </div>
+
+        <!-- Live Preview List -->
+        <div id="find-results-list" class="find-results-list"></div>
+      </div>
+
+      <div id="find-footer">
+        <button class="btn" id="btn-find-cancel" data-i18n="mergeCancel">Cancel</button>
+        <button class="btn primary" id="btn-find-replace-all" data-i18n="findReplaceAll">⚡ Replace All</button>
+      </div>
+    </div>
+  </div>
+
+
+</div>
+<script type="module" src="/src/main.ts"></script>
+
+</body>
+</html>
+
+
